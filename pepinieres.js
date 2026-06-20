@@ -1,0 +1,92 @@
+/* ============================================================
+   El Mechtel — PÉPINIÈRES (profils complets)
+   Source unique : éditer ce fichier pour ajouter ou modifier une pépinière.
+   ============================================================ */
+
+const NURSERIES = {
+  n1:{name:"Pépinière El Baraka",region:"Béja",agree:true,since:2009,rating:4.8,
+    cat:"olivier",reviews:142,orders:1300,area:"12 ha",cap:"450 000 plants/an",
+    tagline:"Spécialiste de l'olivier de Béja, première région oléicole du Nord.",
+    about:"Pépinière familiale fondée à Béja, au cœur de la première zone de production de plants d'olivier du pays. Trois générations de pépiniéristes, un agrément CRDA renouvelé sans interruption, et une obsession : des plants greffés sains, fidèles à la variété, prêts à reprendre.",
+    specialties:["Olivier Chétoui","Olivier Chemlali","Figuier Bouhouli","Greffage sur place"],
+    certs:["Agréée CRDA Béja","Contrôle phytosanitaire annuel","Traçabilité variétale"],
+    history:[
+      {y:"2009",t:"Création à Béja",d:"Lancement sur 2 ha, focalisé sur l'olivier Chétoui."},
+      {y:"2014",t:"Agrément CRDA",d:"Première certification officielle et contrôle sanitaire."},
+      {y:"2019",t:"Extension à 12 ha",d:"Nouvelle parcelle de greffage et serre d'élevage."},
+      {y:"2024",t:"Rejoint El Mechtel",d:"Mise en ligne du catalogue, +38 % de contacts en 6 mois."},
+    ],
+    revs:[
+      {n:"Mohamed T.",r:5,t:"50 oliviers Chétoui livrés, tous repris. Plants sains et bien greffés.",w:"Il y a 2 semaines"},
+      {n:"Société Agri-Nord",r:5,t:"Commande de 300 plants honorée à temps pour la campagne. Très pro.",w:"Le mois dernier"},
+      {n:"Salah B.",r:4,t:"Bon rapport qualité-prix. Conseil utile sur l'irrigation au démarrage.",w:"Il y a 2 mois"},
+    ]},
+  n2:{name:"Pépinière Chemlali",region:"Sfax",agree:true,since:2014,rating:4.9,
+    cat:"olivier",reviews:206,orders:2100,area:"18 ha",cap:"600 000 plants/an",
+    tagline:"L'olivier Chemlali de Sfax, la variété reine de l'huile tunisienne.",
+    about:"Située au cœur du bassin oléicole de Sfax, la pépinière est spécialisée dans la production en godet de l'olivier Chemlali, la variété la plus plantée de Tunisie. Sélection des pieds-mères, suivi sanitaire strict et capacité industrielle pour les grands projets de plantation.",
+    specialties:["Olivier Chemlali Sfax","Olivier Picholine","Plants en godet","Grandes commandes"],
+    certs:["Agréée CRDA Sfax","Pieds-mères sélectionnés","Indemne maladies de quarantaine"],
+    history:[
+      {y:"2014",t:"Création à Sfax",d:"Spécialisation immédiate sur le Chemlali en godet."},
+      {y:"2017",t:"Capacité 300k plants",d:"Premier contrat avec un grand domaine oléicole."},
+      {y:"2021",t:"18 ha en production",d:"Doublement de la capacité, export vers la Libye."},
+      {y:"2024",t:"Rejoint El Mechtel",d:"Vitrine en ligne et avis vérifiés, note 4,9/5."},
+    ],
+    revs:[
+      {n:"Domaine El Hidoub",r:5,t:"1 000 plants Chemlali, qualité homogène impeccable. Référence à Sfax.",w:"Il y a 1 semaine"},
+      {n:"Karim Z.",r:5,t:"Variété conforme, godets bien racinés. Je recommande sans hésiter.",w:"Il y a 3 semaines"},
+      {n:"Coop. Oléicole Sud",r:5,t:"Sérieux et ponctuel, même sur grosse quantité. Partenaire de confiance.",w:"Il y a 1 mois"},
+    ]},
+  n3:{name:"Jnen Nabeul",region:"Nabeul",agree:true,since:2011,rating:4.7,
+    cat:"fruitier",reviews:178,orders:1650,area:"9 ha",cap:"500 000 plants/an",
+    tagline:"Agrumes et arbres fruitiers greffés, tradition horticole du Cap Bon.",
+    about:"Au Cap Bon, terre des agrumes par excellence, Jnen Nabeul produit des plants fruitiers greffés et certifiés : orangers Maltaise, pêchers, plants maraîchers en plaque. Un savoir-faire de greffage transmis depuis 2011, au service des arboriculteurs comme des maraîchers.",
+    specialties:["Agrumes Maltaise","Pêcher Carnival","Plants maraîchers en plaque","Greffage certifié"],
+    certs:["Agréée CRDA Nabeul","Plants greffés certifiés","Semences hybrides homologuées"],
+    history:[
+      {y:"2011",t:"Création à Nabeul",d:"Démarrage sur les agrumes, vocation du Cap Bon."},
+      {y:"2015",t:"Atelier maraîcher",d:"Production de plants en plaque alvéolée (tomate, piment)."},
+      {y:"2020",t:"Certification greffe",d:"Plants fruitiers greffés certifiés conformes."},
+      {y:"2024",t:"Rejoint El Mechtel",d:"Catalogue agrumes + maraîcher en ligne."},
+    ],
+    revs:[
+      {n:"Faouzi M.",r:5,t:"Orangers Maltaise greffés nickel, reprise à 100 %. Très satisfait.",w:"Il y a 5 jours"},
+      {n:"Ferme Béni Khalled",r:4,t:"Plants de tomate vigoureux livrés à temps pour la campagne.",w:"Il y a 3 semaines"},
+      {n:"Hatem L.",r:5,t:"Conseil variétal précieux pour mon verger. Equipe à l'écoute.",w:"Il y a 6 semaines"},
+    ]},
+  n4:{name:"Pépinière Sahel Vert",region:"Sousse",agree:true,since:2017,rating:4.6,
+    cat:"ornement",reviews:121,orders:980,area:"5 ha",cap:"300 000 plants/an",
+    tagline:"Ornement et paysage pour jardins, hôtels et collectivités du Sahel.",
+    about:"Pépinière d'ornement du Sahel, Sahel Vert habille jardins privés, hôtels et espaces publics : bougainvilliers, lauriers-roses, plants greffés de pastèque pour le maraîchage haut de gamme. Un fournisseur clé des paysagistes de la région touristique de Sousse-Monastir.",
+    specialties:["Bougainvillier","Laurier-rose","Pastèque greffée","Aménagement paysager"],
+    certs:["Agréée CRDA Sousse","Plants sains en fleur","Fournisseur paysagistes"],
+    history:[
+      {y:"2017",t:"Création à Sousse",d:"Niche ornement pour l'hôtellerie du Sahel."},
+      {y:"2019",t:"Contrats hôteliers",d:"Aménagement de complexes touristiques."},
+      {y:"2022",t:"Greffage maraîcher",d:"Ajout des plants greffés de pastèque et melon."},
+      {y:"2024",t:"Rejoint El Mechtel",d:"Ouverture au B2C particuliers et jardiniers."},
+    ],
+    revs:[
+      {n:"Hôtel Marhaba",r:5,t:"Aménagement complet de nos jardins, plantes superbes et durables.",w:"Il y a 2 semaines"},
+      {n:"Ines G.",r:4,t:"Bougainvilliers magnifiques, déjà en fleur à la livraison.",w:"Il y a 1 mois"},
+      {n:"Paysagiste Khaled",r:5,t:"Fournisseur fiable pour mes chantiers, qualité constante.",w:"Il y a 5 semaines"},
+    ]},
+  n5:{name:"Pépinière Bizerte Flora",region:"Bizerte",agree:true,since:2008,rating:4.8,
+    cat:"ornement",reviews:163,orders:1420,area:"7 ha",cap:"400 000 plants/an",
+    tagline:"Géraniums, oliviers d'ornement et plants façonnés, depuis Bizerte.",
+    about:"La doyenne du réseau. Depuis 2008 à Bizerte, Flora maîtrise le géranium (héritage régional reconnu), l'olivier d'ornement façonné et une large gamme de plantes d'extérieur. Une pépinière qui marie production de masse et pièces décoratives travaillées à la main.",
+    specialties:["Géranium lierre","Olivier d'ornement façonné","Plantes d'extérieur","Boutures racinées"],
+    certs:["Agréée CRDA Bizerte","Héritage géranium régional","Plants façonnés main"],
+    history:[
+      {y:"2008",t:"Création à Bizerte",d:"Spécialisation géranium, tradition du Nord."},
+      {y:"2013",t:"Olivier d'ornement",d:"Lancement des sujets façonnés pour le décoratif."},
+      {y:"2018",t:"7 ha en production",d:"Gamme élargie aux plantes d'extérieur."},
+      {y:"2024",t:"Rejoint El Mechtel",d:"La plus ancienne pépinière du réseau, note 4,8/5."},
+    ],
+    revs:[
+      {n:"Leila H.",r:5,t:"Olivier d'ornement façonné sublime, pièce maîtresse de ma terrasse.",w:"Il y a 1 semaine"},
+      {n:"Résidence Les Pins",r:5,t:"Géraniums par centaines, qualité au rendez-vous chaque saison.",w:"Il y a 3 semaines"},
+      {n:"Nizar B.",r:4,t:"Belle gamme d'extérieur, plants robustes. Maison sérieuse et ancienne.",w:"Il y a 2 mois"},
+    ]},
+};

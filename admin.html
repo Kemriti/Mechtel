@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — El Mechtel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- avertissement config -->
+<div id="cfg" class="admin-cfg-warn" style="display:none">
+  <h3>⚙️ Supabase n'est pas encore configuré</h3>
+  <p>Ouvrez <code>assets/supabase.js</code> et remplacez <code>SUPABASE_URL</code> et <code>SUPABASE_ANON</code> par les valeurs de votre projet. Voir <code>GUIDE-SUPABASE.md</code> pour les 10 minutes de configuration.</p>
+</div>
+
+<!-- login -->
+<div id="login" class="admin-login" style="display:none">
+  <div class="card glass">
+    <div class="mark"><svg width="26" height="26" viewBox="0 0 32 32" fill="none"><path d="M16 29c0-7 0-12 4-16 3-3 8-3 8-3s0 5-3 8c-4 4-9 4-9 4z" fill="#fff" opacity=".95"/><path d="M16 29c0-7 0-12-4-16-3-3-8-3-8-3s0 5 3 8c4 4 9 4 9 4z" fill="#fff" opacity=".7"/><path d="M16 29V13" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></div>
+    <h1>Admin El Mechtel</h1>
+    <p>Accès réservé. Connectez-vous pour gérer les plants et pépinières.</p>
+    <label>Email</label><input id="lg-email" type="email" placeholder="admin@elmechtel.tn">
+    <label>Mot de passe</label><input id="lg-pass" type="password" placeholder="••••••••">
+    <div class="err" id="lg-err"></div>
+    <button class="btn-primary" style="width:100%" id="lg-btn">Se connecter</button>
+  </div>
+</div>
+
+<!-- admin -->
+<div id="admin" style="display:none">
+  <div class="admin-bar"><div class="admin-shell" style="display:flex;align-items:center;gap:16px;width:100%">
+    <span class="brand">El Mechtel <span style="color:var(--teal-deep)">· Admin</span></span>
+    <span class="who" id="who"></span>
+    <button id="seedBtn" title="Importer les données de démonstration dans Supabase">⇪ Importer la démo</button>
+    <button id="logoutBtn">Déconnexion</button>
+  </div></div>
+
+  <div class="admin-shell">
+    <div class="admin-tabs">
+      <button class="on" id="tab-prod" onclick="switchTab('prod')">🌱 Plants</button>
+      <button id="tab-nur" onclick="switchTab('nur')">🏡 Pépinières</button>
+      <button id="tab-home" onclick="switchTab('home')">⊞ Page d'accueil</button>
+    </div>
+
+    <section id="pane-prod">
+      <div class="admin-head"><h2>Plants <span id="cnt-prod" style="color:var(--muted);font-weight:600"></span></h2><button class="admin-add" onclick="openProductForm()">+ Ajouter un plant</button></div>
+      <div class="admin-table glass" id="list-prod"></div>
+    </section>
+
+    <section id="pane-nur" style="display:none">
+      <div class="admin-head"><h2>Pépinières <span id="cnt-nur" style="color:var(--muted);font-weight:600"></span></h2><button class="admin-add" onclick="openNurseryForm()">+ Ajouter une pépinière</button></div>
+      <div class="admin-table glass" id="list-nur"></div>
+    </section>
+
+    <section id="pane-home" style="display:none">
+      <div class="admin-head"><h2>Ordre des « pépinières à la une »</h2></div>
+      <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:14px">Choisissez quelles pépinières apparaissent en page d'accueil et dans quel ordre. <b>Si vous ne classez rien</b>, l'accueil affiche par défaut les 4 pépinières agréées les mieux notées.</p>
+      <div class="admin-table glass" id="list-home"></div>
+    </section>
+  </div>
+</div>
+
+<!-- modale formulaire + toast -->
+<div class="overlay" id="overlay"><div class="modal" id="modal" role="dialog" aria-modal="true" style="max-width:680px"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/supabase.js"></script>
+<script src="produits.js"></script>
+<script src="pepinieres.js"></script>
+<script>
+const $ = (s,r=document)=>r.querySelector(s);
+let ADM = { products:[], nurseries:{}, photoBuf:null };
+let _tt; function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2600);}
+function closeModal(){$('#overlay').classList.remove('show');document.body.style.overflow='';ADM.photoBuf=null;}
+$('#overlay').addEventListener('click',e=>{if(e.target===$('#overlay'))closeModal();});
+
+/* mini-illustration de repli (réutilise SVG global de produits.js) */
+function thumb(cat,photo){return photo?`<img class="ph-img" src="${photo}" alt="">`:(SVG[cat]||SVG.olivier);}
+
+/* ── Démarrage ── */
+(async function start(){
+  if(typeof sbReady!=='function' || !sbReady()){ $('#cfg').style.display='block'; return; }
+  const user = await sbCurrentUser();
+  if(user){ showAdmin(user); } else { $('#login').style.display='grid'; }
+})();
+
+/* ── Auth ── */
+$('#lg-btn').addEventListener('click', async ()=>{
+  $('#lg-err').textContent='';
+  try{
+    const u = await sbLogin($('#lg-email').value.trim(), $('#lg-pass').value);
+    showAdmin(u);
+  }catch(e){ $('#lg-err').textContent = "Échec : "+(e.message||'identifiants invalides'); }
+});
+$('#lg-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')$('#lg-btn').click();});
+
+async function showAdmin(user){
+  $('#login').style.display='none'; $('#cfg').style.display='none'; $('#admin').style.display='block';
+  $('#who').textContent = user.email || '';
+  await loadAll();
+}
+$('#logoutBtn').addEventListener('click', async ()=>{ await sbLogout(); location.reload(); });
+
+/* ── Chargement ── */
+async function loadAll(){
+  try{
+    ADM.nurseries = await sbFetchNurseries();
+    ADM.products  = await sbFetchProducts();
+  }catch(e){ toast('Erreur de chargement : '+e.message); }
+  renderProducts(); renderNurseries();
+}
+
+function switchTab(t){
+  ['prod','nur','home'].forEach(x=>{
+    $('#tab-'+x).classList.toggle('on',t===x);
+    $('#pane-'+x).style.display = t===x?'block':'none';
+  });
+  if(t==='home') renderHomeOrder();
+}
+
+/* ── Listes ── */
+function renderProducts(){
+  $('#cnt-prod').textContent = `· ${ADM.products.length}`;
+  $('#list-prod').innerHTML = ADM.products.length ? ADM.products.map(p=>{
+    const nur=ADM.nurseries[p.n], st=STOCK[p.stock||'ok'];
+    return `<div class="admin-row">
+      <div class="admin-thumb">${thumb(p.cat,p.photo)}</div>
+      <div class="info"><b>${p.plant} — ${p.variety}</b><span>${(CATS[p.cat]||{}).label||p.cat} · ${nur?nur.name:p.n} · ${p.pmin}–${p.pmax} TND</span></div>
+      <button class="stk-toggle" title="Cliquer pour changer le statut de stock" style="background:${st.bg};color:${st.color}" onclick="cycleStock(${p.id})"><span class="sdot" style="background:${st.dot}"></span>${st.label}</button>
+      <div class="acts"><button onclick="openProductForm(${p.id})">Modifier</button><button class="del" onclick="delProduct(${p.id})">Supprimer</button></div>
+    </div>`;}).join('') : emptyRow('Aucun plant. Cliquez « Importer la démo » ou « Ajouter un plant ».');
+}
+function renderNurseries(){
+  const ids=Object.keys(ADM.nurseries);
+  $('#cnt-nur').textContent = `· ${ids.length}`;
+  $('#list-nur').innerHTML = ids.length ? ids.map(id=>{const n=ADM.nurseries[id];
+    return `<div class="admin-row">
+      <div class="admin-thumb">${thumb(n.cat,n.photo)}</div>
+      <div class="info"><b>${n.name}</b><span>${n.region} · ${n.agree?'agréée':'non agréée'} · note ${n.rating||'—'}</span></div>
+      <div class="acts"><button onclick="openNurseryForm('${id}')">Modifier</button><button class="del" onclick="delNursery('${id}')">Supprimer</button></div>
+    </div>`;}).join('') : emptyRow('Aucune pépinière. Cliquez « Importer la démo » ou « Ajouter une pépinière ».');
+}
+function emptyRow(t){return `<div class="admin-row" style="color:var(--ink-soft);justify-content:center;padding:30px">${t}</div>`;}
+
+/* ── Upload photo (commun) ── */
+async function handleUpload(file, prefix){
+  if(!file) return;
+  $('#upStatus').textContent='Téléversement…'; $('#upStatus').className='adm-uploading';
+  try{
+    const url = await sbUploadPhoto(file, prefix);
+    ADM.photoBuf = url;
+    $('#photoPrev').innerHTML = `<img class="ph-img" src="${url}" alt="">`;
+    $('#upStatus').textContent='✓ Photo prête'; $('#upStatus').className='adm-uploading';
+    $('#upStatus').style.color='var(--green)';
+  }catch(e){ $('#upStatus').textContent='Erreur : '+e.message; $('#upStatus').style.color='var(--clay)'; }
+}
+
+/* ── Formulaire PLANT ── */
+function openProductForm(id){
+  const p = id!=null ? ADM.products.find(x=>x.id===id) : {id:nextProductId(),cat:'olivier',plant:'',variety:'',n:Object.keys(ADM.nurseries)[0]||'',pmin:0,pmax:0,unit:'plant',san:'',photo:null};
+  ADM.photoBuf = p.photo||null;
+  const nurOpts = Object.keys(ADM.nurseries).map(k=>`<option value="${k}" ${k===p.n?'selected':''}>${ADM.nurseries[k].name}</option>`).join('');
+  const catOpts = Object.keys(CATS).map(k=>`<option value="${k}" ${k===p.cat?'selected':''}>${CATS[k].label}</option>`).join('');
+  $('#modal').innerHTML = `
+    <div class="modal-body">
+      <h2 style="margin-bottom:18px">${id!=null?'Modifier':'Ajouter'} un plant</h2>
+      <div class="adm-photo" style="margin-bottom:18px">
+        <div class="prev" id="photoPrev">${p.photo?`<img class="ph-img" src="${p.photo}">`:SVG[p.cat]}</div>
+        <div class="up">
+          <label class="adm-upbtn">📷 Choisir une photo<input type="file" accept="image/*" style="display:none" onchange="handleUpload(this.files[0],'products/${p.id}')"></label>
+          <div id="upStatus" class="adm-uploading" style="margin-top:6px"></div>
+        </div>
+      </div>
+      <div class="adm-form-grid">
+        <div class="adm-field"><label>Nom du plant</label><input id="f-plant" value="${esc(p.plant)}"></div>
+        <div class="adm-field"><label>Variété</label><input id="f-variety" value="${esc(p.variety)}"></div>
+        <div class="adm-field"><label>Catégorie</label><select id="f-cat">${catOpts}</select></div>
+        <div class="adm-field"><label>Pépinière</label><select id="f-nur">${nurOpts}</select></div>
+        <div class="adm-field"><label>Prix min (TND)</label><input id="f-pmin" type="number" step="0.01" value="${p.pmin}"></div>
+        <div class="adm-field"><label>Prix max (TND)</label><input id="f-pmax" type="number" step="0.01" value="${p.pmax}"></div>
+        <div class="adm-field"><label>Unité</label><input id="f-unit" value="${esc(p.unit)}" placeholder="plant / sujet"></div>
+        <div class="adm-field"><label>État sanitaire</label><input id="f-san" value="${esc(p.san)}"></div>
+        <div class="adm-field"><label>Stock</label><select id="f-stock">
+          <option value="ok" ${(p.stock||'ok')==='ok'?'selected':''}>🟢 Disponible</option>
+          <option value="low" ${p.stock==='low'?'selected':''}>🟠 Quantité limitée</option>
+          <option value="out" ${p.stock==='out'?'selected':''}>🔴 Rupture</option>
+        </select></div>
+      </div>
+      <div class="cta-row" style="margin-top:20px">
+        <button class="btn-wa" onclick="saveProduct(${p.id})">Enregistrer</button>
+        <button class="btn-ghost" onclick="closeModal()">Annuler</button>
+      </div>
+    </div>`;
+  $('#overlay').classList.add('show'); document.body.style.overflow='hidden';
+}
+async function saveProduct(id){
+  const row = productToRow({ id, cat:$('#f-cat').value, plant:$('#f-plant').value.trim(), variety:$('#f-variety').value.trim(),
+    n:$('#f-nur').value, pmin:$('#f-pmin').value, pmax:$('#f-pmax').value, unit:$('#f-unit').value.trim(), san:$('#f-san').value.trim(),
+    stock:$('#f-stock').value, photo:ADM.photoBuf });
+  try{ await sbSaveProduct(row); closeModal(); toast('Plant enregistré ✓'); await loadAll(); }
+  catch(e){ toast('Erreur : '+e.message); }
+}
+// Bascule de stock en 1 clic (ok → low → out → ok)
+async function cycleStock(id){
+  const p = ADM.products.find(x=>x.id===id); if(!p) return;
+  const cur = p.stock||'ok', next = STOCK_CYCLE[(STOCK_CYCLE.indexOf(cur)+1)%STOCK_CYCLE.length];
+  p.stock = next; renderProducts(); // feedback immédiat
+  try{ await sbSaveProduct(productToRow(p)); toast('Stock : '+STOCK[next].label); }
+  catch(e){ toast('Erreur : '+e.message); await loadAll(); }
+}
+async function delProduct(id){
+  if(!confirm('Supprimer ce plant ?')) return;
+  try{ await sbDeleteProduct(id); toast('Plant supprimé'); await loadAll(); }catch(e){ toast('Erreur : '+e.message); }
+}
+function nextProductId(){ return (ADM.products.reduce((m,p)=>Math.max(m,p.id),0)||0)+1; }
+
+/* ── Formulaire PÉPINIÈRE ── */
+function openNurseryForm(id){
+  const n = id!=null ? ADM.nurseries[id] : {id:'',name:'',region:'',agree:true,since:2020,rating:4.5,cat:'olivier',reviews:0,orders:0,area:'',cap:'',tagline:'',about:'',photo:null,specialties:[],certs:[],history:[],revs:[]};
+  ADM.photoBuf = n.photo||null;
+  const catOpts = Object.keys(CATS).map(k=>`<option value="${k}" ${k===n.cat?'selected':''}>${CATS[k].label}</option>`).join('');
+  $('#modal').innerHTML = `
+    <div class="modal-body">
+      <h2 style="margin-bottom:18px">${id!=null?'Modifier':'Ajouter'} une pépinière</h2>
+      <div class="adm-photo" style="margin-bottom:18px">
+        <div class="prev" id="photoPrev">${n.photo?`<img class="ph-img" src="${n.photo}">`:SVG[n.cat]}</div>
+        <div class="up">
+          <label class="adm-upbtn">📷 Photo de couverture<input type="file" accept="image/*" style="display:none" onchange="handleUpload(this.files[0],'nurseries/${id||'new'}')"></label>
+          <div id="upStatus" class="adm-uploading" style="margin-top:6px"></div>
+        </div>
+      </div>
+      <div class="adm-form-grid">
+        <div class="adm-field"><label>Identifiant (ex. n6) ${id!=null?'<span style="color:var(--muted)">(non modifiable)</span>':''}</label><input id="f-id" value="${esc(n.id)}" ${id!=null?'disabled':''} placeholder="n6"></div>
+        <div class="adm-field"><label>Nom</label><input id="f-name" value="${esc(n.name)}"></div>
+        <div class="adm-field"><label>Région (gouvernorat)</label><input id="f-region" value="${esc(n.region)}"></div>
+        <div class="adm-field"><label>Catégorie principale</label><select id="f-cat">${catOpts}</select></div>
+        <div class="adm-field"><label>Agréée CRDA</label><select id="f-agree"><option value="true" ${n.agree?'selected':''}>Oui</option><option value="false" ${!n.agree?'selected':''}>Non</option></select></div>
+        <div class="adm-field"><label>Depuis (année)</label><input id="f-since" type="number" value="${n.since}"></div>
+        <div class="adm-field"><label>Note (/5)</label><input id="f-rating" type="number" step="0.1" value="${n.rating}"></div>
+        <div class="adm-field"><label>Nb d'avis</label><input id="f-reviews" type="number" value="${n.reviews}"></div>
+        <div class="adm-field"><label>Superficie</label><input id="f-area" value="${esc(n.area)}" placeholder="12 ha"></div>
+        <div class="adm-field"><label>Capacité</label><input id="f-cap" value="${esc(n.cap)}" placeholder="450 000 plants/an"></div>
+        <div class="adm-field"><label>Plants livrés</label><input id="f-orders" type="number" value="${n.orders}"></div>
+        <div class="adm-field full"><label>Accroche</label><input id="f-tagline" value="${esc(n.tagline)}"></div>
+        <div class="adm-field full"><label>À propos</label><textarea id="f-about">${esc(n.about)}</textarea></div>
+        <div class="adm-field full"><label>Spécialités (séparées par des virgules)</label><input id="f-spec" value="${esc((n.specialties||[]).join(', '))}"></div>
+        <div class="adm-field full"><label>Certifications (séparées par des virgules)</label><input id="f-certs" value="${esc((n.certs||[]).join(', '))}"></div>
+      </div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:12px">Historique et avis détaillés se modifient dans Supabase (champs JSON) — gardés tels quels ici.</p>
+      <div class="cta-row" style="margin-top:16px">
+        <button class="btn-wa" onclick="saveNursery('${id||''}')">Enregistrer</button>
+        <button class="btn-ghost" onclick="closeModal()">Annuler</button>
+      </div>
+    </div>`;
+  $('#overlay').classList.add('show'); document.body.style.overflow='hidden';
+}
+async function saveNursery(existingId){
+  const id = existingId || $('#f-id').value.trim();
+  if(!id){ toast('Identifiant requis (ex. n6)'); return; }
+  const prev = ADM.nurseries[id] || {};
+  const row = nurseryToRow({
+    id, name:$('#f-name').value.trim(), region:$('#f-region').value.trim(),
+    agree:$('#f-agree').value==='true', since:$('#f-since').value, rating:$('#f-rating').value,
+    cat:$('#f-cat').value, reviews:$('#f-reviews').value, orders:$('#f-orders').value,
+    area:$('#f-area').value.trim(), cap:$('#f-cap').value.trim(),
+    tagline:$('#f-tagline').value.trim(), about:$('#f-about').value.trim(), photo:ADM.photoBuf,
+    specialties:csv($('#f-spec').value), certs:csv($('#f-certs').value),
+    history:prev.history||[], revs:prev.revs||[],
+  });
+  try{ await sbSaveNursery(row); closeModal(); toast('Pépinière enregistrée ✓'); await loadAll(); }
+  catch(e){ toast('Erreur : '+e.message); }
+}
+async function delNursery(id){
+  if(!confirm('Supprimer cette pépinière ? (ses plants resteront mais sans vitrine)')) return;
+  try{ await sbDeleteNursery(id); toast('Pépinière supprimée'); await loadAll(); }catch(e){ toast('Erreur : '+e.message); }
+}
+
+/* ── Ordre page d'accueil (classement manuel) ── */
+function renderHomeOrder(){
+  const ids = Object.keys(ADM.nurseries).filter(id=>ADM.nurseries[id].about);
+  const feat = ids.filter(id=>ADM.nurseries[id].home_rank!=null).sort((a,b)=>ADM.nurseries[a].home_rank-ADM.nurseries[b].home_rank);
+  const rest = ids.filter(id=>ADM.nurseries[id].home_rank==null);
+  const rowFeat = (id,i)=>{const n=ADM.nurseries[id];return `<div class="order-row">
+    <div class="order-rank">${i+1}</div>
+    <div class="info"><b>${n.name}</b><span style="font-size:.8rem;color:var(--ink-soft);display:block">${n.region}</span></div>
+    <div class="order-arrows"><button onclick="moveFeatured('${id}',-1)" ${i===0?'disabled':''}>↑</button><button onclick="moveFeatured('${id}',1)" ${i===feat.length-1?'disabled':''}>↓</button></div>
+    <button class="order-feat on" onclick="toggleFeatured('${id}')">À la une ✓</button>
+  </div>`;};
+  const rowRest = (id)=>{const n=ADM.nurseries[id];return `<div class="order-row off">
+    <div class="order-rank" style="background:rgba(14,32,24,.06);color:var(--muted)">—</div>
+    <div class="info"><b>${n.name}</b><span style="font-size:.8rem;color:var(--ink-soft);display:block">${n.region}</span></div>
+    <button class="order-feat" onclick="toggleFeatured('${id}')">Mettre à la une</button>
+  </div>`;};
+  $('#list-home').innerHTML =
+    (feat.length?`<div style="padding:10px 16px;font-size:.74rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-deep)">À la une (ordre d'affichage)</div>`:'')
+    + feat.map(rowFeat).join('')
+    + `<div style="padding:10px 16px;font-size:.74rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Autres pépinières</div>`
+    + rest.map(rowRest).join('');
+}
+async function toggleFeatured(id){
+  const n = ADM.nurseries[id];
+  if(n.home_rank!=null){ n.home_rank=null; }
+  else { const max=Math.max(0,...Object.values(ADM.nurseries).map(x=>x.home_rank||0)); n.home_rank=max+1; }
+  await persistRank(id); renderHomeOrder();
+}
+async function moveFeatured(id,dir){
+  const feat=Object.keys(ADM.nurseries).filter(k=>ADM.nurseries[k].home_rank!=null).sort((a,b)=>ADM.nurseries[a].home_rank-ADM.nurseries[b].home_rank);
+  const i=feat.indexOf(id), j=i+dir; if(j<0||j>=feat.length) return;
+  [feat[i],feat[j]]=[feat[j],feat[i]];
+  feat.forEach((k,idx)=>ADM.nurseries[k].home_rank=idx+1);
+  renderHomeOrder();
+  try{ for(const k of feat){ await sbSaveNursery(nurseryToRow({...ADM.nurseries[k], id:k})); } toast('Ordre mis à jour ✓'); }
+  catch(e){ toast('Erreur : '+e.message); await loadAll(); }
+}
+async function persistRank(id){
+  try{ await sbSaveNursery(nurseryToRow({...ADM.nurseries[id], id})); }
+  catch(e){ toast('Erreur : '+e.message); await loadAll(); }
+}
+
+/* ── Import démo → Supabase ── */
+$('#seedBtn').addEventListener('click', async ()=>{
+  if(!confirm('Importer les pépinières et plants de démonstration dans votre base Supabase ?')) return;
+  try{
+    for(const id of Object.keys(NURSERIES)){ await sbSaveNursery(nurseryToRow({...NURSERIES[id], id})); }
+    for(const l of LISTINGS){ await sbSaveProduct(productToRow(l)); }
+    toast('Données de démo importées ✓'); await loadAll();
+  }catch(e){ toast('Erreur import : '+e.message); }
+});
+
+/* ── utils ── */
+function csv(s){ return s.split(',').map(x=>x.trim()).filter(Boolean); }
+function esc(s){ return String(s==null?'':s).replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+</script>
+</body>
+</html>
