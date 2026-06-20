@@ -46,3 +46,8 @@ const STOCK = {
 };
 const STOCK_CYCLE = ["ok","low","out"];          // ordre de bascule en 1 clic
 function stockOf(p){ return (p && p.stock) || "ok"; } // défaut = disponible
+
+// Export Node (tests uniquement) — bloc inerte dans un navigateur classique.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { CATS, SVG, LISTINGS, STOCK, STOCK_CYCLE, stockOf };
+}

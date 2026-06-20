@@ -244,3 +244,8 @@ function renderEspace(){
     <button class="lead-wa" title="Répondre sur WhatsApp" onclick="toast('Ouverture de WhatsApp… (démo)')">${waIcon(18)}</button>
   </div>`).join('');
 }
+
+// Export Node (tests uniquement) — bloc inerte dans un navigateur classique.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { STATE, QUOTA, featuredNurseryIds };
+}

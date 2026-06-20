@@ -270,3 +270,8 @@ function submitQuote(){
   </div></div>`;
   $('#overlay').classList.add('show'); document.body.style.overflow='hidden';
 }
+
+// Export Node (tests uniquement) — bloc inerte dans un navigateur classique.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { addToQuote, removeFromQuote, clearQuote, setQuoteQty, toast, closeModal };
+}

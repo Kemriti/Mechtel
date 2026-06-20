@@ -90,3 +90,8 @@ const NURSERIES = {
       {n:"Nizar B.",r:4,t:"Belle gamme d'extérieur, plants robustes. Maison sérieuse et ancienne.",w:"Il y a 2 mois"},
     ]},
 };
+
+// Export Node (tests uniquement) — bloc inerte dans un navigateur classique.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { NURSERIES };
+}

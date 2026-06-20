@@ -108,3 +108,8 @@ function productToRow(o){
   return { id:+o.id, cat:o.cat, plant:o.plant, variety:o.variety, nursery_id:o.n,
            pmin:+o.pmin, pmax:+o.pmax, unit:o.unit, san:o.san, photo:o.photo||null, stock:o.stock||'ok' };
 }
+
+// Export Node (tests uniquement) — bloc inerte dans un navigateur classique.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { sbReady, rowToNursery, nurseryToRow, rowToProduct, productToRow };
+}
