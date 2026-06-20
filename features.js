@@ -10,13 +10,16 @@ const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const fmt = n => Number.isInteger(n) ? n : n.toFixed(2).replace(/\.?0+$/,'');
 const priceLabel = l => l.pmin===l.pmax ? `${fmt(l.pmin)} TND` : `${fmt(l.pmin)}–${fmt(l.pmax)} TND`;
 
-/* ── WhatsApp (devis) ──
-   Provisoire : tant qu'aucune pépinière n'a son propre numéro enregistré,
-   tous les devis partent vers ce numéro unique. */
-const OWNER_WHATSAPP = "+33636017892";
-const waDigits = (raw) => String(raw || '').replace(/\D/g, '');
-const waLink = (phone, text) => `https://wa.me/${waDigits(phone)}?text=${encodeURIComponent(text)}`;
-function leadWaMessage(l, nur, name, phone, qty, msg){
+/* ── Notification devis (Telegram) ──
+   Provisoire : tant qu'aucune pépinière n'a son propre canal enregistré,
+   tous les devis notifient ce même chat Telegram (côté serveur, voir
+   supabase/functions/notify-quote). */
+const NOTIFY_URL = "https://nqlsukckqjnfiyipsrzo.supabase.co/functions/v1/notify-quote";
+function notifyTelegram(text){
+  fetch(NOTIFY_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text }) })
+    .catch(()=>{}); // best-effort : une panne de notification ne doit jamais bloquer l'envoi du devis
+}
+function leadMessage(l, nur, name, phone, qty, msg){
   return [
     `Nouvelle demande de devis — El Mechtel`,
     `Plant : ${l.plant} (${l.variety})`,
@@ -26,7 +29,7 @@ function leadWaMessage(l, nur, name, phone, qty, msg){
     msg ? `Message : ${msg}` : null,
   ].filter(Boolean).join('\n');
 }
-function quoteWaMessage(items, nur, name, phone, msg){
+function quoteMessage(items, nur, name, phone, msg){
   const lignes = items.map(it => {
     const l = LISTINGS.find(x => x.id === it.id);
     return `• ${l.plant} (${l.variety})${it.qty ? ` ×${it.qty}` : ''}`;
@@ -161,7 +164,7 @@ function submitLead(id){
   const name=$('#lf-name').value.trim()||"Acheteur",qty=$('#lf-qty').value.trim();
   const phone=$('#lf-phone').value.trim(),msg=$('#lf-msg').value.trim();
   addLead({name,plant:l.plant,variety:l.variety,qty:qty||"—",nursery:nur.name,when:"À l'instant"});  // addLead défini dans app.js
-  window.open(waLink(OWNER_WHATSAPP, leadWaMessage(l, nur, name, phone, qty, msg)), '_blank');
+  notifyTelegram(leadMessage(l, nur, name, phone, qty, msg));
   $('#leadForm').classList.remove('show');$('#confirm').classList.add('show');
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
@@ -294,7 +297,7 @@ function submitQuote(){
   const phone=$('#q-phone').value.trim(),msg=$('#q-msg').value.trim();
   const lignes=q.items.map(it=>{const l=LISTINGS.find(x=>x.id===it.id);return `${l.plant} (${l.variety})${it.qty?` ×${it.qty}`:''}`;}).join(' · ');
   addLead({ name, plant:`Devis groupé — ${q.items.length} plants`, variety:lignes, qty:'groupé', nursery:nur.name, when:"À l'instant" });
-  window.open(waLink(OWNER_WHATSAPP, quoteWaMessage(q.items, nur, name, phone, msg)), '_blank');
+  notifyTelegram(quoteMessage(q.items, nur, name, phone, msg));
   clearQuote();
   $('#modal').innerHTML = `<div class="modal-body"><div class="confirm show">
     <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12l5 5L20 6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -309,6 +312,6 @@ function submitQuote(){
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     addToQuote, removeFromQuote, clearQuote, setQuoteQty, toast, closeModal,
-    waDigits, waLink, leadWaMessage, quoteWaMessage,
+    leadMessage, quoteMessage, notifyTelegram,
   };
 }
