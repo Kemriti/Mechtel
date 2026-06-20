@@ -10,6 +10,36 @@ const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const fmt = n => Number.isInteger(n) ? n : n.toFixed(2).replace(/\.?0+$/,'');
 const priceLabel = l => l.pmin===l.pmax ? `${fmt(l.pmin)} TND` : `${fmt(l.pmin)}–${fmt(l.pmax)} TND`;
 
+/* ── WhatsApp (devis) ──
+   Provisoire : tant qu'aucune pépinière n'a son propre numéro enregistré,
+   tous les devis partent vers ce numéro unique. */
+const OWNER_WHATSAPP = "+33636017892";
+const waDigits = (raw) => String(raw || '').replace(/\D/g, '');
+const waLink = (phone, text) => `https://wa.me/${waDigits(phone)}?text=${encodeURIComponent(text)}`;
+function leadWaMessage(l, nur, name, phone, qty, msg){
+  return [
+    `Nouvelle demande de devis — El Mechtel`,
+    `Plant : ${l.plant} (${l.variety})`,
+    `Pépinière : ${nur.name} · ${nur.region}`,
+    `Quantité souhaitée : ${qty || '—'}`,
+    `Acheteur : ${name}${phone ? ' · ' + phone : ''}`,
+    msg ? `Message : ${msg}` : null,
+  ].filter(Boolean).join('\n');
+}
+function quoteWaMessage(items, nur, name, phone, msg){
+  const lignes = items.map(it => {
+    const l = LISTINGS.find(x => x.id === it.id);
+    return `• ${l.plant} (${l.variety})${it.qty ? ` ×${it.qty}` : ''}`;
+  }).join('\n');
+  return [
+    `Devis groupé — El Mechtel`,
+    `Pépinière : ${nur.name} · ${nur.region}`,
+    lignes,
+    `Acheteur : ${name}${phone ? ' · ' + phone : ''}`,
+    msg ? `Message : ${msg}` : null,
+  ].filter(Boolean).join('\n');
+}
+
 /* ── SVG atoms ── */
 function seal(size=42){return `<svg class="seal" width="${size}" height="${size}" viewBox="0 0 56 56" fill="none">
   <circle cx="28" cy="28" r="26" fill="rgba(255,255,255,.92)" stroke="#0d9488" stroke-width="1.5"/>
@@ -129,7 +159,9 @@ function closeModal(){const o=$('#overlay');if(o){o.classList.remove('show');doc
 function submitLead(id){
   const l=LISTINGS.find(x=>x.id===id),nur=NURSERIES[l.n];
   const name=$('#lf-name').value.trim()||"Acheteur",qty=$('#lf-qty').value.trim();
+  const phone=$('#lf-phone').value.trim(),msg=$('#lf-msg').value.trim();
   addLead({name,plant:l.plant,variety:l.variety,qty:qty||"—",nursery:nur.name,when:"À l'instant"});  // addLead défini dans app.js
+  window.open(waLink(OWNER_WHATSAPP, leadWaMessage(l, nur, name, phone, qty, msg)), '_blank');
   $('#leadForm').classList.remove('show');$('#confirm').classList.add('show');
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
@@ -259,8 +291,10 @@ function setQuoteQty(id, val){ const it=STATE.quote.items.find(x=>x.id===id); if
 function submitQuote(){
   const q=STATE.quote, nur=NURSERIES[q.nid];
   const name=$('#q-name').value.trim()||'Acheteur';
+  const phone=$('#q-phone').value.trim(),msg=$('#q-msg').value.trim();
   const lignes=q.items.map(it=>{const l=LISTINGS.find(x=>x.id===it.id);return `${l.plant} (${l.variety})${it.qty?` ×${it.qty}`:''}`;}).join(' · ');
   addLead({ name, plant:`Devis groupé — ${q.items.length} plants`, variety:lignes, qty:'groupé', nursery:nur.name, when:"À l'instant" });
+  window.open(waLink(OWNER_WHATSAPP, quoteWaMessage(q.items, nur, name, phone, msg)), '_blank');
   clearQuote();
   $('#modal').innerHTML = `<div class="modal-body"><div class="confirm show">
     <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12l5 5L20 6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -273,5 +307,8 @@ function submitQuote(){
 
 // Export Node (tests uniquement) — bloc inerte dans un navigateur classique.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { addToQuote, removeFromQuote, clearQuote, setQuoteQty, toast, closeModal };
+  module.exports = {
+    addToQuote, removeFromQuote, clearQuote, setQuoteQty, toast, closeModal,
+    waDigits, waLink, leadWaMessage, quoteWaMessage,
+  };
 }
